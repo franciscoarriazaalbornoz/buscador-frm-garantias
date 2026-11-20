@@ -46,5 +46,13 @@
   "rol": "usuario",
   "activo": true,
   "hash": "scrypt:32768:8:1$qiAkCf4NP6kmCIgm$1e653a0d5e3dcd1b883f4406ed6e42c2a89de1fef57510fbfc19a4bd1ba1d9bcb8484af5f4b19530a9bcbeb455975eb9399d600ad3837657cc0e62ed2b2e164c"
+ },
+ "alopez": {
+  "creado": "2026-11-20",
+  "nombre": "Alexis Lopez",
+  "sucursal": "Rancagua",
+  "rol": "usuario",
+  "activo": true,
+  "hash": "scrypt:32768:8:1$FHsPxfs6GGdqg4fh$9168807291d067b98a754de03543c9d0c1418c3b493fafae8a09f6ac2576a453d2218a40310d867b342a902ae7e356be3b314a4515afea09f6bd2311cc8360f3"
  }
 }
