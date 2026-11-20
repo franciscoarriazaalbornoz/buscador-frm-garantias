@@ -30,5 +30,13 @@
   "rol": "usuario",
   "activo": true,
   "hash": "scrypt:32768:8:1$9VPEhtamfBUSf28s$57942a48b349b0e96bb7e24eb3bcbb8112e3c6c36d45b2e22fffb2a5c46f9e38a17399c19073ff75a79fb367ee62b3c46ef7ebbbab710a118685edcb240a5533"
+ },
+ "omatamala.a": {
+  "creado": "2026-11-20",
+  "nombre": "Oscar Matamala",
+  "sucursal": "Antofagasta",
+  "rol": "usuario",
+  "activo": true,
+  "hash": "scrypt:32768:8:1$LjDZIK9FqtPJhzm2$c58189f8ab574f319ae5cedebfb0bc406c37cba0ce765bd3f718cd066dabe39c14f7a50dd7677514d84780102250ed52076fb35d7c283271d5f44fa7717d1962"
  }
 }
