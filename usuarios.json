@@ -38,5 +38,13 @@
   "rol": "usuario",
   "activo": true,
   "hash": "scrypt:32768:8:1$LjDZIK9FqtPJhzm2$c58189f8ab574f319ae5cedebfb0bc406c37cba0ce765bd3f718cd066dabe39c14f7a50dd7677514d84780102250ed52076fb35d7c283271d5f44fa7717d1962"
+ },
+ "omatamala.c": {
+  "creado": "2026-11-20",
+  "nombre": "Oscar Matamala",
+  "sucursal": "Calama",
+  "rol": "usuario",
+  "activo": true,
+  "hash": "scrypt:32768:8:1$qiAkCf4NP6kmCIgm$1e653a0d5e3dcd1b883f4406ed6e42c2a89de1fef57510fbfc19a4bd1ba1d9bcb8484af5f4b19530a9bcbeb455975eb9399d600ad3837657cc0e62ed2b2e164c"
  }
 }
