@@ -10,7 +10,7 @@ FRM = json.loads((BASE / "frm.json").read_text(encoding="utf-8"))
 SERPER_KEY = os.environ.get("SERPER_API_KEY", "")
 ACCESS_KEY = os.environ.get("ACCESS_KEY", "")  # opcional: clave simple para el equipo
 
-app = Flask(__name__, static_folder="static")
+app = Flask(__name__, static_folder=None)
 
 # ---------- normalización de texto ----------
 ABBR = {"ASSY": "ASSEMBLY", "SUBASSY": "SUBASSEMBLY", "FR": "FRONT", "RR": "REAR", "CYL": "CYLINDER",
@@ -110,7 +110,7 @@ def autorizado():
 
 @app.get("/")
 def index():
-    return send_from_directory(app.static_folder, "index.html")
+    return send_from_directory(BASE, "index.html")
 
 @app.get("/api/config")
 def config():
