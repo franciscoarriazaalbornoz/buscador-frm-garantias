@@ -70,5 +70,13 @@
   "rol": "usuario",
   "activo": true,
   "hash": "scrypt:32768:8:1$RpL3QiTR9JDpmmOB$e48e5c7b7dbf2ec23b49dbbc79637fb2ef82d03937c60008b80e1a2dc0623c5b32cd0753a45d4e002e347a1ef7d728ccc19d16621d26e0c26c2ada2ab7aa030b"
+ },
+ "mcerezo": {
+  "creado": "2026-11-20",
+  "nombre": "MIguel Cerezo",
+  "sucursal": "Antofagasta",
+  "rol": "usuario",
+  "activo": true,
+  "hash": "scrypt:32768:8:1$TqQnNQit8Fpq0lL2$2a08b3a7d51e19d3ceed18aa8c4fac2a401b49031a75e25660e37c8cc4b40e983bfdd28c33e52df59275e7347edd66d0600ba8b38380d5f69c5a4bdcbb0949fe"
  }
 }
