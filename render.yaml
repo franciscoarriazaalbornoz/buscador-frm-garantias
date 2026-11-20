@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: buscador-frm-garantias
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers 1 --threads 4 --timeout 60
+    envVars:
+      - key: SERPER_API_KEY
+        sync: false
+      - key: ACCESS_KEY
+        sync: false

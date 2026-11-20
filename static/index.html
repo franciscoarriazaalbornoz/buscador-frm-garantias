@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Buscador de Operación FRM · Garantías Summit</title>
+<style>
+  :root{--rojo:#EB0A1E;--rojo2:#b80818;--txt:#1d1d1f;--sub:#6b6f76;--borde:#e3e5e8;--fondo:#f5f6f8;--ok:#0f7b45}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--fondo);color:var(--txt)}
+  header{background:#111;color:#fff;padding:14px 20px;display:flex;align-items:center;gap:12px}
+  header .logo{width:34px;height:34px;border-radius:50%;background:var(--rojo);display:grid;place-items:center;font-weight:800}
+  header h1{font-size:17px;margin:0;font-weight:650}
+  header small{display:block;color:#b9bcc2;font-size:12px;font-weight:400}
+  main{max-width:880px;margin:0 auto;padding:22px 16px 60px}
+  .card{background:#fff;border:1px solid var(--borde);border-radius:14px;padding:18px}
+  .tabs{display:flex;gap:6px;margin-bottom:12px}
+  .tabs button{border:1px solid var(--borde);background:#fff;border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px}
+  .tabs button.on{background:var(--txt);color:#fff;border-color:var(--txt)}
+  .fila{display:flex;gap:8px}
+  input{flex:1;font-size:18px;padding:12px 14px;border:1.5px solid var(--borde);border-radius:10px;outline:none;text-transform:uppercase}
+  input:focus{border-color:var(--rojo)}
+  #q{text-transform:none}
+  .btn{background:var(--rojo);color:#fff;border:0;border-radius:10px;padding:0 20px;font-size:16px;font-weight:600;cursor:pointer}
+  .btn:hover{background:var(--rojo2)} .btn:disabled{opacity:.6;cursor:wait}
+  .ayuda{color:var(--sub);font-size:13px;margin-top:8px}
+  .nombre{margin:18px 0 8px;font-size:14px;color:var(--sub)}
+  .nombre b{color:var(--txt)}
+  .res{background:#fff;border:1px solid var(--borde);border-radius:12px;padding:14px 16px;margin-top:10px;display:grid;grid-template-columns:auto 1fr auto;gap:4px 14px;align-items:center}
+  .res.top{border:2px solid var(--rojo)}
+  .cod{font-family:ui-monospace,Consolas,monospace;font-size:22px;font-weight:700;letter-spacing:.5px}
+  .desc{font-size:15px}
+  .meta{grid-column:2;font-size:12px;color:var(--sub)}
+  .tipo{display:inline-block;background:#f0f1f3;border-radius:6px;padding:1px 7px;margin-right:6px;font-weight:600;color:var(--txt)}
+  .copiar{border:1px solid var(--borde);background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13px;grid-row:1/3;grid-column:3}
+  .copiar.ok{border-color:var(--ok);color:var(--ok)}
+  .bar{height:5px;background:#eee;border-radius:4px;overflow:hidden;width:70px;grid-column:1}
+  .bar i{display:block;height:100%;background:var(--rojo)}
+  details{grid-column:1/4;font-size:13px;margin-top:6px}
+  details summary{cursor:pointer;color:var(--sub)}
+  details li{margin:3px 0} details code{font-weight:700}
+  .msg{margin-top:16px;padding:12px 14px;border-radius:10px;background:#fff4f4;color:#a1000f;border:1px solid #f3c9cd}
+  .fuentes{font-size:12px;color:var(--sub);margin-top:14px}
+  .hist{margin-top:22px;font-size:13px;color:var(--sub)}
+  .hist span{display:inline-block;background:#fff;border:1px solid var(--borde);border-radius:999px;padding:3px 10px;margin:3px;cursor:pointer;color:var(--txt)}
+  .aviso{font-size:12px;color:var(--sub);margin-top:26px;text-align:center}
+  @media(max-width:560px){.cod{font-size:18px}.res{grid-template-columns:1fr auto}.bar,.meta{grid-column:1}.copiar{grid-column:2}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">S</div>
+  <div><h1>Buscador de Operación FRM <small>Cobro de garantías · Grupo OneSummit Post Venta</small></h1></div>
+</header>
+<main>
+  <div class="card">
+    <div class="tabs">
+      <button id="tParte" class="on" onclick="modo('parte')">Por número de parte</button>
+      <button id="tTexto" onclick="modo('texto')">Por descripción</button>
+    </div>
+    <form id="fParte" class="fila" onsubmit="buscarParte(event)">
+      <input id="pn" placeholder="Ej: 04465-0K290" autocomplete="off" autofocus>
+      <button class="btn" id="bParte">Buscar</button>
+    </form>
+    <form id="fTexto" class="fila" style="display:none" onsubmit="buscarTexto(event)">
+      <input id="q" placeholder="Ej: alternator, brake pad, window regulator" autocomplete="off">
+      <button class="btn">Buscar</button>
+    </form>
+    <div class="ayuda" id="ayuda">Ingresa el número de parte del repuesto causante (con o sin guion). Se busca su nombre en internet y se cruza con el catálogo FRM.</div>
+  </div>
+  <div id="salida"></div>
+  <div class="hist" id="hist"></div>
+  <div class="aviso">Sugerencia automática: verifica la operación contra el caso antes de enviar el reclamo. Base FRM Pasajeros · <span id="nops"></span> operaciones.</div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let clave = '';
+try { clave = localStorage.getItem('frm_clave') || ''; } catch(e) {}
+
+async function api(url){
+  const r = await fetch(url, {headers: {'X-Access-Key': clave}});
+  if (r.status === 401) {
+    clave = prompt('Ingresa la clave de acceso del equipo de garantías:') || '';
+    try { localStorage.setItem('frm_clave', clave); } catch(e) {}
+    return api(url);
+  }
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error || 'Error');
+  return d;
+}
+
+fetch('/api/config').then(r=>r.json()).then(c=>{ $('nops').textContent = c.operaciones.toLocaleString('es-CL'); });
+
+function modo(m){
+  $('tParte').classList.toggle('on', m==='parte'); $('tTexto').classList.toggle('on', m==='texto');
+  $('fParte').style.display = m==='parte' ? 'flex' : 'none';
+  $('fTexto').style.display = m==='texto' ? 'flex' : 'none';
+  $('ayuda').textContent = m==='parte'
+    ? 'Ingresa el número de parte del repuesto causante (con o sin guion). Se busca su nombre en internet y se cruza con el catálogo FRM.'
+    : 'Escribe el nombre del repuesto en inglés, como aparece en el catálogo Toyota.';
+  (m==='parte' ? $('pn') : $('q')).focus();
+}
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function pintar(resultados, cabecera){
+  if (!resultados.length) {
+    $('salida').innerHTML = cabecera + '<div class="msg">No encontré operaciones que calcen. Prueba en "Por descripción" con el nombre del repuesto.</div>';
+    return;
+  }
+  $('salida').innerHTML = cabecera + resultados.map((r,i)=>`
+    <div class="res ${i===0?'top':''}">
+      <div class="cod">${esc(r.codigo)}</div>
+      <div class="desc">${esc(r.descripcion)}</div>
+      <button class="copiar" onclick="copiar(this,'${esc(r.codigo)}')">Copiar</button>
+      <div class="bar" title="Coincidencia ${r.confianza}%"><i style="width:${r.confianza}%"></i></div>
+      <div class="meta"><span class="tipo">${esc(r.tipo)}</span>${esc(r.grupo)}</div>
+      ${r.adicionales.length ? `<details><summary>${r.adicionales.length} operaciones adicionales (ADD) asociadas</summary><ul>${
+        r.adicionales.map(a=>`<li><code>${esc(a.codigo)}</code> · ${esc(a.descripcion)}</li>`).join('')}</ul></details>` : ''}
+    </div>`).join('');
+}
+
+async function buscarParte(e){
+  e.preventDefault();
+  const pn = $('pn').value.trim(); if (!pn) return;
+  $('bParte').disabled = true; $('bParte').textContent = 'Buscando…';
+  $('salida').innerHTML = '';
+  try {
+    const d = await api('/api/parte?pn=' + encodeURIComponent(pn));
+    const cab = `<div class="nombre">Repuesto <b>${esc(d.parte)}</b> · encontrado como: <b>${esc(d.nombre || '—')}</b>${d.desde_cache?' (guardado)':''}</div>`;
+    pintar(d.resultados, cab);
+    if (d.fuentes && d.fuentes.length) $('salida').insertAdjacentHTML('beforeend',
+      `<details class="fuentes"><summary>Ver fuentes de internet</summary><ul>${d.fuentes.map(f=>`<li>${esc(f)}</li>`).join('')}</ul></details>`);
+    guardarHist(d.parte);
+  } catch(err) {
+    $('salida').innerHTML = `<div class="msg">${esc(err.message)}</div>`;
+  } finally { $('bParte').disabled = false; $('bParte').textContent = 'Buscar'; }
+}
+
+async function buscarTexto(e){
+  e.preventDefault();
+  const q = $('q').value.trim(); if (!q) return;
+  try {
+    const d = await api('/api/texto?q=' + encodeURIComponent(q));
+    pintar(d.resultados, `<div class="nombre">Resultados para <b>${esc(q)}</b></div>`);
+  } catch(err) { $('salida').innerHTML = `<div class="msg">${esc(err.message)}</div>`; }
+}
+
+function copiar(btn, codigo){
+  navigator.clipboard.writeText(codigo).then(()=>{ btn.textContent='✓ Copiado'; btn.classList.add('ok');
+    setTimeout(()=>{btn.textContent='Copiar'; btn.classList.remove('ok');}, 1500); });
+}
+
+function guardarHist(pn){
+  let h = []; try { h = JSON.parse(localStorage.getItem('frm_hist')||'[]'); } catch(e){}
+  h = [pn, ...h.filter(x=>x!==pn)].slice(0,8);
+  try { localStorage.setItem('frm_hist', JSON.stringify(h)); } catch(e){}
+  verHist(h);
+}
+function verHist(h){
+  if (!h) { try { h = JSON.parse(localStorage.getItem('frm_hist')||'[]'); } catch(e){ h=[]; } }
+  $('hist').innerHTML = h.length ? 'Búsquedas recientes: ' + h.map(p=>`<span onclick="$('pn').value='${esc(p)}';modo('parte');$('fParte').requestSubmit()">${esc(p)}</span>`).join('') : '';
+}
+verHist();
+</script>
+</body>
+</html>
