@@ -54,5 +54,13 @@
   "rol": "usuario",
   "activo": true,
   "hash": "scrypt:32768:8:1$FHsPxfs6GGdqg4fh$9168807291d067b98a754de03543c9d0c1418c3b493fafae8a09f6ac2576a453d2218a40310d867b342a902ae7e356be3b314a4515afea09f6bd2311cc8360f3"
+ },
+ "dacevedo": {
+  "creado": "2026-11-20",
+  "nombre": "Daniel Acevedo",
+  "sucursal": "Rancagua",
+  "rol": "usuario",
+  "activo": true,
+  "hash": "scrypt:32768:8:1$juniXVW1io4NLvL3$cc86627eb9b29cfb26e62ea0f2c5d53aadff262df1a2d8fddb8e440a45100f2a2c99009742f956df688e933fa0bd994d8879f04c98e316dd170bc1ea214b4397"
  }
 }
