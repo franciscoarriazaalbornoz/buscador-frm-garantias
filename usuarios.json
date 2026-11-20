@@ -62,5 +62,13 @@
   "rol": "usuario",
   "activo": true,
   "hash": "scrypt:32768:8:1$juniXVW1io4NLvL3$cc86627eb9b29cfb26e62ea0f2c5d53aadff262df1a2d8fddb8e440a45100f2a2c99009742f956df688e933fa0bd994d8879f04c98e316dd170bc1ea214b4397"
+ },
+ "czepeda": {
+  "creado": "2026-11-20",
+  "nombre": "Claudio Zepeda",
+  "sucursal": "Calama",
+  "rol": "usuario",
+  "activo": true,
+  "hash": "scrypt:32768:8:1$RpL3QiTR9JDpmmOB$e48e5c7b7dbf2ec23b49dbbc79637fb2ef82d03937c60008b80e1a2dc0623c5b32cd0753a45d4e002e347a1ef7d728ccc19d16621d26e0c26c2ada2ab7aa030b"
  }
 }
