@@ -1,0 +1,10 @@
+{
+ "jpoblete": {
+  "creado": "2026-11-20",
+  "nombre": "Jose Poblete",
+  "sucursal": "Matta",
+  "rol": "usuario",
+  "activo": true,
+  "hash": "scrypt:32768:8:1$yySkdVZbQbT450DW$c91c044219edcb12d8c4a68660304533fbb4f52b043e3f61a902d1203e5e9dc2da1900ba3b7b59f5ab3b9f2669cbacaa55414c98b8a0b954f2b28edab2c95301"
+ }
+}
