@@ -14,5 +14,13 @@
   "rol": "usuario",
   "activo": true,
   "hash": "scrypt:32768:8:1$KMcWtfKTWSDyOvrF$3fc168d9271f0c0ed204e7ca2b4f34c65f4e81839acb2bf55eaa69d1cf86268dc0929111c83d56da5c23ef15ea32693c70f771f7b590e2d82096f3a99970a4e7"
+ },
+ "fpetersen": {
+  "creado": "2026-11-20",
+  "nombre": "Fernando Petersen",
+  "sucursal": "Colón",
+  "rol": "usuario",
+  "activo": true,
+  "hash": "scrypt:32768:8:1$o9eZvEgIL0waCNVF$44903644103f053118304136e85a945660c8d5030f18faff2b068845b9caa98bc37694be480f66639e6739a226693b0c6dd82f896afadf7dbaade93ac86d219c"
  }
 }
