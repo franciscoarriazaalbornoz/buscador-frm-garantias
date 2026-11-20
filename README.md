@@ -6,6 +6,12 @@ y lo cruza con el catálogo FRM Pasajeros (2.522 operaciones) para sugerir el c�
 
 - `frm.json`: catálogo FRM (desde `INDICE FRM PASAJEROS.xlsx`, hoja BD FRM PASAJEROS).
 - Los nombres encontrados se guardan por los 5 primeros dígitos del número de parte (mismo código = mismo repuesto) para ahorrar búsquedas.
-- Variables de entorno en Render: `SERPER_API_KEY` (obligatoria) y `ACCESS_KEY` (opcional, clave del equipo).
+- Acceso con usuario y clave. El administrador crea las cuentas en el panel "Usuarios".
+- Las cuentas se guardan en `usuarios.json` en este repo (claves encriptadas), vía la API de GitHub.
+- Variables de entorno en Render:
+  - `SERPER_API_KEY`: clave de serper.dev (búsqueda en internet).
+  - `ADMIN_USER` / `ADMIN_PASSWORD`: cuenta del administrador.
+  - `GITHUB_TOKEN`: token de GitHub con permiso de escritura en este repo (para guardar usuarios).
+  - `SECRET_KEY`: la genera Render automáticamente.
 
 Para actualizar el catálogo: `python build_data.py "INDICE FRM PASAJEROS.xlsx"`.

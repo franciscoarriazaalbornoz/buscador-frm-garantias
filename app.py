@@ -1,16 +1,23 @@
 """Buscador de Operación FRM para cobro de garantías — Grupo Summit Post Venta."""
-import json, math, os, re, time
+import base64, json, math, os, re, secrets, time
 from collections import Counter
 from pathlib import Path
 import requests
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, session
+from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE = Path(__file__).parent
 FRM = json.loads((BASE / "frm.json").read_text(encoding="utf-8"))
 SERPER_KEY = os.environ.get("SERPER_API_KEY", "")
-ACCESS_KEY = os.environ.get("ACCESS_KEY", "")  # opcional: clave simple para el equipo
+ADMIN_USER = os.environ.get("ADMIN_USER", "admin").strip().lower()
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")        # para guardar usuarios en el repo
+GITHUB_REPO = os.environ.get("GITHUB_REPO", "franciscoarriazaalbornoz/buscador-frm-garantias")
 
 app = Flask(__name__, static_folder=None)
+app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
+app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax",
+                  PERMANENT_SESSION_LIFETIME=60 * 60 * 24 * 30)
 
 # ---------- normalización de texto ----------
 ABBR = {"ASSY": "ASSEMBLY", "SUBASSY": "SUBASSEMBLY", "FR": "FRONT", "RR": "REAR", "CYL": "CYLINDER",
@@ -104,22 +111,161 @@ def nombre_desde_internet(pn_raw):
             pass
     return info, False
 
-# ---------- rutas ----------
-def autorizado():
-    return not ACCESS_KEY or request.headers.get("X-Access-Key") == ACCESS_KEY
+# ---------- usuarios ----------
+USERS_FILE = BASE / "usuarios.json"
+USERS = json.loads(USERS_FILE.read_text(encoding="utf-8")) if USERS_FILE.exists() else {}
+USERS_SHA = None
 
+def _gh(method, **kw):
+    return requests.request(method, f"https://api.github.com/repos/{GITHUB_REPO}/contents/usuarios.json",
+                            headers={"Authorization": f"Bearer {GITHUB_TOKEN}",
+                                     "Accept": "application/vnd.github+json"}, timeout=15, **kw)
+
+def cargar_usuarios():
+    """Al iniciar, trae la versión más reciente de usuarios.json desde GitHub."""
+    global USERS, USERS_SHA
+    if not GITHUB_TOKEN:
+        return
+    try:
+        r = _gh("GET")
+        if r.status_code == 200:
+            d = r.json()
+            USERS = json.loads(base64.b64decode(d["content"]).decode("utf-8"))
+            USERS_SHA = d["sha"]
+    except Exception as e:
+        print("No se pudo leer usuarios desde GitHub:", e)
+
+def guardar_usuarios(motivo):
+    global USERS_SHA
+    data = json.dumps(USERS, ensure_ascii=False, indent=1)
+    USERS_FILE.write_text(data, encoding="utf-8")
+    if not GITHUB_TOKEN:
+        return "sin_github"
+    body = {"message": f"[skip render] usuarios: {motivo}",
+            "content": base64.b64encode(data.encode("utf-8")).decode()}
+    if USERS_SHA:
+        body["sha"] = USERS_SHA
+    r = _gh("PUT", json=body)
+    if r.status_code in (200, 201):
+        USERS_SHA = r.json()["content"]["sha"]
+        return "ok"
+    if r.status_code in (409, 422):          # el archivo cambió: recarga sha y reintenta una vez
+        g = _gh("GET")
+        if g.status_code == 200:
+            body["sha"] = USERS_SHA = g.json()["sha"]
+            r = _gh("PUT", json=body)
+            if r.status_code in (200, 201):
+                USERS_SHA = r.json()["content"]["sha"]
+                return "ok"
+    return f"error_github_{r.status_code}"
+
+cargar_usuarios()
+
+def usuario_actual():
+    u = session.get("u")
+    if not u:
+        return None
+    if u == ADMIN_USER and ADMIN_PASSWORD:
+        return {"usuario": u, "nombre": "Administrador", "rol": "admin"}
+    d = USERS.get(u)
+    if not d or not d.get("activo", True):
+        return None
+    return {"usuario": u, "nombre": d.get("nombre", u), "rol": d.get("rol", "usuario")}
+
+def requiere(rol=None):
+    u = usuario_actual()
+    if not u:
+        return None, (jsonify({"error": "Debes iniciar sesión", "login": True}), 401)
+    if rol == "admin" and u["rol"] != "admin":
+        return None, (jsonify({"error": "Solo el administrador puede hacer esto"}), 403)
+    return u, None
+
+# ---------- rutas ----------
 @app.get("/")
 def index():
     return send_from_directory(BASE, "index.html")
 
 @app.get("/api/config")
 def config():
-    return jsonify({"requiere_clave": bool(ACCESS_KEY), "operaciones": N})
+    return jsonify({"operaciones": N, "usuario": usuario_actual()})
+
+@app.post("/api/login")
+def login():
+    d = request.get_json(silent=True) or {}
+    u = (d.get("usuario") or "").strip().lower()
+    p = d.get("clave") or ""
+    ok = False
+    if u == ADMIN_USER and ADMIN_PASSWORD and secrets.compare_digest(p, ADMIN_PASSWORD):
+        ok = True
+    elif u in USERS and USERS[u].get("activo", True) and check_password_hash(USERS[u]["hash"], p):
+        ok = True
+    if not ok:
+        time.sleep(0.8)
+        return jsonify({"error": "Usuario o clave incorrectos"}), 401
+    session.permanent = True
+    session["u"] = u
+    return jsonify({"usuario": usuario_actual()})
+
+@app.post("/api/logout")
+def logout():
+    session.clear()
+    return jsonify({"ok": True})
+
+@app.post("/api/mi-clave")
+def mi_clave():
+    u, err = requiere()
+    if err: return err
+    if u["usuario"] not in USERS:
+        return jsonify({"error": "La clave del administrador se cambia en Render (ADMIN_PASSWORD)."}), 400
+    d = request.get_json(silent=True) or {}
+    if not check_password_hash(USERS[u["usuario"]]["hash"], d.get("actual", "")):
+        return jsonify({"error": "La clave actual no es correcta"}), 400
+    nueva = d.get("nueva", "")
+    if len(nueva) < 6:
+        return jsonify({"error": "La nueva clave debe tener al menos 6 caracteres"}), 400
+    USERS[u["usuario"]]["hash"] = generate_password_hash(nueva)
+    return jsonify({"ok": True, "guardado": guardar_usuarios(f"cambio de clave {u['usuario']}")})
+
+@app.get("/api/usuarios")
+def listar_usuarios():
+    _, err = requiere("admin")
+    if err: return err
+    lista = [{"usuario": k, "nombre": v.get("nombre", ""), "sucursal": v.get("sucursal", ""),
+              "rol": v.get("rol", "usuario"), "activo": v.get("activo", True), "creado": v.get("creado", "")}
+             for k, v in sorted(USERS.items())]
+    return jsonify({"usuarios": lista, "persistencia": "github" if GITHUB_TOKEN else "temporal"})
+
+@app.post("/api/usuarios")
+def crear_o_editar_usuario():
+    admin, err = requiere("admin")
+    if err: return err
+    d = request.get_json(silent=True) or {}
+    u = re.sub(r"[^a-z0-9._-]", "", (d.get("usuario") or "").strip().lower())
+    if len(u) < 3:
+        return jsonify({"error": "El usuario debe tener al menos 3 caracteres (letras, números, punto o guion)"}), 400
+    if u == ADMIN_USER:
+        return jsonify({"error": "Ese nombre de usuario está reservado"}), 400
+    nuevo = u not in USERS
+    clave = d.get("clave") or ""
+    if nuevo and len(clave) < 6:
+        return jsonify({"error": "La clave debe tener al menos 6 caracteres"}), 400
+    reg = USERS.get(u, {"creado": time.strftime("%Y-%m-%d")})
+    reg["nombre"] = (d.get("nombre") or reg.get("nombre") or u).strip()
+    reg["sucursal"] = (d.get("sucursal") or reg.get("sucursal") or "").strip()
+    reg["rol"] = "admin" if d.get("rol") == "admin" else "usuario"
+    reg["activo"] = bool(d.get("activo", reg.get("activo", True)))
+    if clave:
+        if len(clave) < 6:
+            return jsonify({"error": "La clave debe tener al menos 6 caracteres"}), 400
+        reg["hash"] = generate_password_hash(clave)
+    USERS[u] = reg
+    estado = guardar_usuarios(("alta " if nuevo else "cambio ") + u)
+    return jsonify({"ok": True, "nuevo": nuevo, "guardado": estado})
 
 @app.get("/api/parte")
 def por_parte():
-    if not autorizado():
-        return jsonify({"error": "Clave de acceso incorrecta"}), 401
+    _, err = requiere()
+    if err: return err
     pn = clean_pn(request.args.get("pn"))
     if len(pn) < 5:
         return jsonify({"error": "Ingresa al menos los 5 primeros dígitos del número de parte."}), 400
@@ -133,8 +279,8 @@ def por_parte():
 
 @app.get("/api/texto")
 def por_texto():
-    if not autorizado():
-        return jsonify({"error": "Clave de acceso incorrecta"}), 401
+    _, err = requiere()
+    if err: return err
     q = request.args.get("q", "")
     pn = clean_pn(request.args.get("pn", ""))
     pesos = {t: 1.0 for t in toks(q) if t in DF and t not in STOP}

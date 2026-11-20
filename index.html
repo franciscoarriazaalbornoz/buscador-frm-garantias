@@ -44,6 +44,23 @@
   .hist{margin-top:22px;font-size:13px;color:var(--sub)}
   .hist span{display:inline-block;background:#fff;border:1px solid var(--borde);border-radius:999px;padding:3px 10px;margin:3px;cursor:pointer;color:var(--txt)}
   .aviso{font-size:12px;color:var(--sub);margin-top:26px;text-align:center}
+  header .der{margin-left:auto;display:flex;gap:8px;align-items:center;font-size:13px;color:#ddd}
+  header .der button{background:transparent;border:1px solid #444;color:#eee;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:12px}
+  .login{max-width:380px;margin:60px auto}
+  .login h2{margin:0 0 4px;font-size:20px}
+  .login input{width:100%;margin-top:10px;text-transform:none}
+  .login .btn{width:100%;height:46px;margin-top:14px}
+  .login p{color:var(--sub);font-size:13px}
+  .oculto{display:none!important}
+  .adm h3{margin:22px 0 8px;font-size:16px}
+  .adm form{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .adm form input,.adm form select{font-size:14px;padding:9px 10px;text-transform:none;border:1.5px solid var(--borde);border-radius:8px}
+  .adm form .btn{height:40px;grid-column:span 2}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;background:#fff}
+  th,td{text-align:left;padding:8px;border-bottom:1px solid var(--borde)}
+  td button{border:1px solid var(--borde);background:#fff;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px}
+  .ok{color:var(--ok)} .nok{color:#a1000f}
+  .nota{font-size:12px;padding:8px 10px;border-radius:8px;background:#fff8e6;border:1px solid #f1dc9c;margin-top:8px}
   @media(max-width:560px){.cod{font-size:18px}.res{grid-template-columns:1fr auto}.bar,.meta{grid-column:1}.copiar{grid-column:2}}
 </style>
 </head>
@@ -51,15 +68,30 @@
 <header>
   <div class="logo">S</div>
   <div><h1>Buscador de Operación FRM <small>Cobro de garantías · Grupo OneSummit Post Venta</small></h1></div>
+  <div class="der oculto" id="sesion"><span id="quien"></span>
+    <button id="bAdmin" class="oculto" onclick="verAdmin()">Usuarios</button>
+    <button onclick="cambiarClave()">Mi clave</button>
+    <button onclick="salir()">Salir</button></div>
 </header>
-<main>
+<div class="login card oculto" id="vLogin">
+  <h2>Ingresar</h2>
+  <p>Acceso para el equipo de cobro de garantías.</p>
+  <form onsubmit="entrar(event)">
+    <input id="lu" placeholder="Usuario" autocomplete="username">
+    <input id="lp" type="password" placeholder="Clave" autocomplete="current-password">
+    <button class="btn" id="bLogin">Entrar</button>
+  </form>
+  <div id="lmsg"></div>
+  <p>¿No tienes usuario? Pídelo al administrador de Post Venta.</p>
+</div>
+<main id="vApp" class="oculto">
   <div class="card">
     <div class="tabs">
       <button id="tParte" class="on" onclick="modo('parte')">Por número de parte</button>
       <button id="tTexto" onclick="modo('texto')">Por descripción</button>
     </div>
     <form id="fParte" class="fila" onsubmit="buscarParte(event)">
-      <input id="pn" placeholder="Ej: 04465-0K290" autocomplete="off" autofocus>
+      <input id="pn" placeholder="Ej: 04465-0K290" autocomplete="off">
       <button class="btn" id="bParte">Buscar</button>
     </form>
     <form id="fTexto" class="fila" style="display:none" onsubmit="buscarTexto(event)">
@@ -70,26 +102,77 @@
   </div>
   <div id="salida"></div>
   <div class="hist" id="hist"></div>
+  <div class="adm oculto" id="vAdmin">
+    <h3>Crear o editar usuario</h3>
+    <div class="card"><form onsubmit="guardarUsuario(event)">
+      <input id="au" placeholder="Usuario (ej: jperez)" required>
+      <input id="an" placeholder="Nombre completo">
+      <select id="as"><option value="">Sucursal</option><option>Colón</option><option>Matta</option><option>Rancagua</option><option>Antofagasta</option><option>Calama</option><option>Post Venta</option></select>
+      <select id="ar"><option value="usuario">Usuario</option><option value="admin">Administrador</option></select>
+      <input id="ac" placeholder="Clave (mín. 6; vacío = no cambiar)" type="text">
+      <select id="aa"><option value="1">Activo</option><option value="0">Desactivado</option></select>
+      <button class="btn">Guardar usuario</button>
+    </form><div id="amsg"></div></div>
+    <h3>Usuarios</h3>
+    <div id="anota"></div>
+    <table><thead><tr><th>Usuario</th><th>Nombre</th><th>Sucursal</th><th>Rol</th><th>Estado</th><th></th></tr></thead><tbody id="atabla"></tbody></table>
+    <p><button class="btn" style="height:36px" onclick="verAdmin(false)">← Volver al buscador</button></p>
+  </div>
   <div class="aviso">Sugerencia automática: verifica la operación contra el caso antes de enviar el reclamo. Base FRM Pasajeros · <span id="nops"></span> operaciones.</div>
 </main>
 <script>
 const $ = id => document.getElementById(id);
-let clave = '';
-try { clave = localStorage.getItem('frm_clave') || ''; } catch(e) {}
-
-async function api(url){
-  const r = await fetch(url, {headers: {'X-Access-Key': clave}});
-  if (r.status === 401) {
-    clave = prompt('Ingresa la clave de acceso del equipo de garantías:') || '';
-    try { localStorage.setItem('frm_clave', clave); } catch(e) {}
-    return api(url);
-  }
-  const d = await r.json();
+let YO = null;
+async function api(url, opts){
+  const r = await fetch(url, Object.assign({credentials:'same-origin'}, opts||{}));
+  const d = await r.json().catch(()=>({}));
+  if (r.status === 401 && d.login) { mostrarLogin(); throw new Error('Debes iniciar sesión'); }
   if (!r.ok) throw new Error(d.error || 'Error');
   return d;
 }
+const post = (url, body) => api(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
 
-fetch('/api/config').then(r=>r.json()).then(c=>{ $('nops').textContent = c.operaciones.toLocaleString('es-CL'); });
+function mostrarLogin(){ YO=null; $('vLogin').classList.remove('oculto'); $('vApp').classList.add('oculto'); $('sesion').classList.add('oculto'); $('lu').focus(); }
+function mostrarApp(u){
+  YO=u; $('vLogin').classList.add('oculto'); $('vApp').classList.remove('oculto'); $('sesion').classList.remove('oculto');
+  $('quien').textContent = u.nombre; $('bAdmin').classList.toggle('oculto', u.rol!=='admin'); verAdmin(false); $('pn').focus();
+}
+async function entrar(e){
+  e.preventDefault(); $('lmsg').innerHTML=''; $('bLogin').disabled=true;
+  try { const d = await post('/api/login', {usuario:$('lu').value, clave:$('lp').value}); $('lp').value=''; mostrarApp(d.usuario); }
+  catch(err){ $('lmsg').innerHTML = `<div class="msg">${esc(err.message)}</div>`; }
+  finally { $('bLogin').disabled=false; }
+}
+async function salir(){ await post('/api/logout', {}); mostrarLogin(); }
+async function cambiarClave(){
+  const actual = prompt('Clave actual:'); if (actual===null) return;
+  const nueva = prompt('Nueva clave (mínimo 6 caracteres):'); if (!nueva) return;
+  try { await post('/api/mi-clave', {actual, nueva}); alert('Clave actualizada'); } catch(err){ alert(err.message); }
+}
+function verAdmin(mostrar=true){
+  $('vAdmin').classList.toggle('oculto', !mostrar);
+  document.querySelectorAll('#vApp > .card, #salida, #hist').forEach(el=>el.classList.toggle('oculto', mostrar));
+  if (mostrar) cargarUsuarios();
+}
+async function cargarUsuarios(){
+  const d = await api('/api/usuarios');
+  $('anota').innerHTML = d.persistencia==='github' ? '' :
+    '<div class="nota">Falta configurar GITHUB_TOKEN en Render: los usuarios creados se perderán cuando el servicio se reinicie.</div>';
+  $('atabla').innerHTML = d.usuarios.map(u=>`<tr><td>${esc(u.usuario)}</td><td>${esc(u.nombre)}</td><td>${esc(u.sucursal)}</td><td>${u.rol==='admin'?'Admin':'Usuario'}</td>
+    <td class="${u.activo?'ok':'nok'}">${u.activo?'Activo':'Desactivado'}</td>
+    <td><button onclick='editar(${JSON.stringify(u).replace(/'/g,"&#39;")})'>Editar</button></td></tr>`).join('') || '<tr><td colspan="6">Aún no hay usuarios.</td></tr>';
+}
+function editar(u){ $('au').value=u.usuario; $('an').value=u.nombre; $('as').value=u.sucursal; $('ar').value=u.rol; $('aa').value=u.activo?'1':'0'; $('ac').value=''; $('ac').focus(); }
+async function guardarUsuario(e){
+  e.preventDefault(); $('amsg').innerHTML='';
+  try {
+    const d = await post('/api/usuarios', {usuario:$('au').value, nombre:$('an').value, sucursal:$('as').value, rol:$('ar').value, clave:$('ac').value, activo:$('aa').value==='1'});
+    $('amsg').innerHTML = `<div class="nota">${d.nuevo?'Usuario creado':'Usuario actualizado'}${d.guardado==='ok'?' y guardado.':' (guardado temporal: '+esc(d.guardado)+')'}</div>`;
+    e.target.reset(); cargarUsuarios();
+  } catch(err){ $('amsg').innerHTML = `<div class="msg">${esc(err.message)}</div>`; }
+}
+
+fetch('/api/config',{credentials:'same-origin'}).then(r=>r.json()).then(c=>{ $('nops').textContent = c.operaciones.toLocaleString('es-CL'); c.usuario ? mostrarApp(c.usuario) : mostrarLogin(); });
 
 function modo(m){
   $('tParte').classList.toggle('on', m==='parte'); $('tTexto').classList.toggle('on', m==='texto');

@@ -8,5 +8,11 @@ services:
     envVars:
       - key: SERPER_API_KEY
         sync: false
-      - key: ACCESS_KEY
+      - key: ADMIN_USER
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: GITHUB_TOKEN
         sync: false
