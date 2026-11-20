@@ -22,5 +22,13 @@
   "rol": "usuario",
   "activo": true,
   "hash": "scrypt:32768:8:1$o9eZvEgIL0waCNVF$44903644103f053118304136e85a945660c8d5030f18faff2b068845b9caa98bc37694be480f66639e6739a226693b0c6dd82f896afadf7dbaade93ac86d219c"
+ },
+ "fbriones": {
+  "creado": "2026-11-20",
+  "nombre": "Frank Briones",
+  "sucursal": "Colón",
+  "rol": "usuario",
+  "activo": true,
+  "hash": "scrypt:32768:8:1$9VPEhtamfBUSf28s$57942a48b349b0e96bb7e24eb3bcbb8112e3c6c36d45b2e22fffb2a5c46f9e38a17399c19073ff75a79fb367ee62b3c46ef7ebbbab710a118685edcb240a5533"
  }
 }
