@@ -76,6 +76,69 @@ def pack(results, k=6):
     return [{"codigo": r["c"], "descripcion": r["d"], "tipo": r["t"], "grupo": r["g"],
              "confianza": round(100 * s / top), "adicionales": adds_for(r["c"])} for s, r in results[:k]]
 
+# ---------- lista de repuestos TCL (número de parte -> descripción en español) ----------
+from diccionario import ES_EN
+LISTA = json.loads((BASE / "lista_tcl.json").read_text(encoding="utf-8")) if (BASE / "lista_tcl.json").exists() else {}
+FAMILIA = {}
+for _pn, (_d, _g) in LISTA.items():
+    FAMILIA.setdefault(_pn[:5], []).append(_d)
+# convenciones Toyota conocidas por familia (5 primeros dígitos)
+PISTAS = {"04465": {"FRONT": 2.0}, "04466": {"REAR": 2.0}, "04495": {"REAR": 1.5, "SHOE": 1.0},
+          "48510": {"FRONT": 2.0}, "48520": {"FRONT": 2.0}, "48530": {"REAR": 2.0}, "48540": {"REAR": 2.0},
+          "43512": {"FRONT": 2.0}, "42431": {"REAR": 2.0},
+          "69801": {"FRONT": 2.0}, "69802": {"FRONT": 2.0}, "69803": {"REAR": 2.0}, "69804": {"REAR": 2.0},
+          "69810": {"FRONT": 2.0}, "69820": {"FRONT": 2.0}, "69830": {"REAR": 2.0}, "69840": {"REAR": 2.0},
+          "85710": {"FRONT": 1.5}, "85720": {"FRONT": 1.5}, "81110": {"HEADLIGHT": 2.0}, "81150": {"HEADLIGHT": 2.0}}
+# familias donde una palabra ambigua cambia de significado (prefijo -> quitar, agregar)
+AJUSTE_FAMILIA = {"698": ({"STEERING", "GEAR", "RACK"}, {"WINDOW": 2.0, "REGULATOR": 2.0, "DOOR": 1.0}),
+                  "857": ({"ENGINE"}, {"WINDOW": 1.5, "REGULATOR": 1.0, "MOTOR": 1.5})}
+FRASES = [(r"\bA\s*/\s*V(IDRI\w*)?\b", " ALZAVIDRIO "), (r"DISCO\s*(DE\s*)?FRENOS?", " DISCO "),
+          (r"CREMALLERA\s*(VID|VIDRIO|PTA|PUERTA|VENT)", "ALZAVIDRIO "), (r"ALZA\s*(VID|VIDRIO)", "ALZAVIDRIO "),
+          (r"\bO2\b", "OXIGENO "), (r"\bA/?F\b", "OXIGENO "), (r"MOTOR\s*(PARTIDA|ARRANQUE)", "PARTIDA "),
+          (r"MOTOR\s*(ALZA|VIDRIO|VID)", "ALZAVIDRIO MOTORCITO "), (r"MOTOR\s*LIMPIA", "LIMPIA MOTORCITO "),
+          (r"BOMBA\s*AGUA", "BOMBA AGUA "), (r"\bSCRAP\w*", " "), (r"ECU\s*AIRBAG", " AIRBAGECU ")]
+
+def es_a_tokens(desc):
+    pesos = Counter()
+    desc = (desc or "").upper().replace(".", " ")
+    for pat, rep in FRASES:
+        desc = re.sub(pat, rep, desc)
+    for w in re.split(r"[^A-ZÁÉÍÓÚÑ]+", desc):
+        en = ES_EN.get(w)
+        if en:
+            for t in toks(en):
+                if t in DF:
+                    pesos[t] = 1.0
+    return pesos
+
+def nombre_desde_lista(pn):
+    if pn in LISTA:
+        desc = LISTA[pn][0]
+        pesos, fuente = es_a_tokens(desc), "Lista de precios TCL"
+    elif pn[:5] in FAMILIA:
+        descs = FAMILIA[pn[:5]][:40]
+        pesos = Counter()
+        for d in descs:
+            pesos.update(es_a_tokens(d))
+        n = len(descs)
+        pesos = {t: v / n for t, v in pesos.items() if v / n >= 0.3}
+        desc = Counter(descs).most_common(1)[0][0]
+        fuente = f"Lista de precios TCL (familia {pn[:5]})"
+    else:
+        return None
+    pesos = dict(pesos)
+    for pref, (quitar, agregar) in AJUSTE_FAMILIA.items():
+        if pn.startswith(pref):
+            for t in quitar:
+                pesos.pop(t, None)
+            for t, w in agregar.items():
+                pesos[t] = max(pesos.get(t, 0), w)
+    for t, w in PISTAS.get(pn[:5], {}).items():
+        pesos[t] = max(pesos.get(t, 0), w)
+    if not pesos:
+        return None
+    return {"pesos": pesos, "titulo": desc, "fuente": fuente}
+
 # ---------- búsqueda del nombre del repuesto en internet ----------
 CACHE_FILE = BASE / "cache_nombres.json"
 CACHE = json.loads(CACHE_FILE.read_text(encoding="utf-8")) if CACHE_FILE.exists() else {}
@@ -192,7 +255,7 @@ def index():
 
 @app.get("/api/config")
 def config():
-    return jsonify({"operaciones": N, "usuario": usuario_actual()})
+    return jsonify({"operaciones": N, "repuestos": len(LISTA), "usuario": usuario_actual()})
 
 @app.post("/api/login")
 def login():
@@ -274,13 +337,19 @@ def por_parte():
     pn = clean_pn(request.args.get("pn"))
     if len(pn) < 5:
         return jsonify({"error": "Ingresa al menos los 5 primeros dígitos del número de parte."}), 400
+    web = request.args.get("web") == "1"
+    info = None if web else nombre_desde_lista(pn)
+    if info:
+        res = score(info["pesos"], pn)
+        return jsonify({"parte": pn, "nombre": info["titulo"], "origen": info["fuente"], "desde_cache": False,
+                        "fuentes": [], "resultados": pack(res), "puede_web": True})
     try:
         info, cache = nombre_desde_internet(pn)
     except Exception as e:
         return jsonify({"error": f"No se pudo buscar en internet: {e}"}), 502
     res = score(info["pesos"], pn) if info["pesos"] else []
-    return jsonify({"parte": pn, "nombre": info["titulo"], "desde_cache": cache,
-                    "fuentes": info.get("fuentes", []), "resultados": pack(res)})
+    return jsonify({"parte": pn, "nombre": info["titulo"], "origen": "Internet", "desde_cache": cache,
+                    "fuentes": info.get("fuentes", []), "resultados": pack(res), "puede_web": False})
 
 @app.get("/api/texto")
 def por_texto():
@@ -289,6 +358,7 @@ def por_texto():
     q = request.args.get("q", "")
     pn = clean_pn(request.args.get("pn", ""))
     pesos = {t: 1.0 for t in toks(q) if t in DF and t not in STOP}
+    pesos.update(es_a_tokens(q))
     return jsonify({"resultados": pack(score(pesos, pn), 10) if pesos else []})
 
 if __name__ == "__main__":

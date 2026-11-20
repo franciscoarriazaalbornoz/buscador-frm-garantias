@@ -98,7 +98,7 @@
       <input id="q" placeholder="Ej: alternator, brake pad, window regulator" autocomplete="off">
       <button class="btn">Buscar</button>
     </form>
-    <div class="ayuda" id="ayuda">Ingresa el número de parte del repuesto causante (con o sin guion). Se busca su nombre en internet y se cruza con el catálogo FRM.</div>
+    <div class="ayuda" id="ayuda">Ingresa el número de parte del repuesto causante (con o sin guion, mayúscula o minúscula). Se busca en la lista de precios TCL o en internet y se cruza con el catálogo FRM.</div>
   </div>
   <div id="salida"></div>
   <div class="hist" id="hist"></div>
@@ -118,7 +118,7 @@
     <table><thead><tr><th>Usuario</th><th>Nombre</th><th>Sucursal</th><th>Rol</th><th>Estado</th><th></th></tr></thead><tbody id="atabla"></tbody></table>
     <p><button class="btn" style="height:36px" onclick="verAdmin(false)">← Volver al buscador</button></p>
   </div>
-  <div class="aviso">Sugerencia automática: verifica la operación contra el caso antes de enviar el reclamo. Base FRM Pasajeros · <span id="nops"></span> operaciones.</div>
+  <div class="aviso">Sugerencia automática: verifica la operación contra el caso antes de enviar el reclamo. Base FRM Pasajeros · <span id="nops"></span>.</div>
 </main>
 <script>
 const $ = id => document.getElementById(id);
@@ -172,15 +172,15 @@ async function guardarUsuario(e){
   } catch(err){ $('amsg').innerHTML = `<div class="msg">${esc(err.message)}</div>`; }
 }
 
-fetch('/api/config',{credentials:'same-origin'}).then(r=>r.json()).then(c=>{ $('nops').textContent = c.operaciones.toLocaleString('es-CL'); c.usuario ? mostrarApp(c.usuario) : mostrarLogin(); });
+fetch('/api/config',{credentials:'same-origin'}).then(r=>r.json()).then(c=>{ $('nops').textContent = c.operaciones.toLocaleString('es-CL') + ' operaciones · ' + (c.repuestos||0).toLocaleString('es-CL') + ' repuestos en lista TCL'; c.usuario ? mostrarApp(c.usuario) : mostrarLogin(); });
 
 function modo(m){
   $('tParte').classList.toggle('on', m==='parte'); $('tTexto').classList.toggle('on', m==='texto');
   $('fParte').style.display = m==='parte' ? 'flex' : 'none';
   $('fTexto').style.display = m==='texto' ? 'flex' : 'none';
   $('ayuda').textContent = m==='parte'
-    ? 'Ingresa el número de parte del repuesto causante (con o sin guion). Se busca su nombre en internet y se cruza con el catálogo FRM.'
-    : 'Escribe el nombre del repuesto en inglés, como aparece en el catálogo Toyota.';
+    ? 'Ingresa el número de parte del repuesto causante (con o sin guion, mayúscula o minúscula). Se busca en la lista de precios TCL o en internet y se cruza con el catálogo FRM.'
+    : 'Escribe el nombre del repuesto en español o inglés (ej: alternador, pastilla freno, window regulator).';
   (m==='parte' ? $('pn') : $('q')).focus();
 }
 
@@ -203,14 +203,16 @@ function pintar(resultados, cabecera){
     </div>`).join('');
 }
 
-async function buscarParte(e){
-  e.preventDefault();
+async function buscarParte(e, web){
+  if (e) e.preventDefault();
   const pn = $('pn').value.trim(); if (!pn) return;
   $('bParte').disabled = true; $('bParte').textContent = 'Buscando…';
   $('salida').innerHTML = '';
   try {
-    const d = await api('/api/parte?pn=' + encodeURIComponent(pn));
-    const cab = `<div class="nombre">Repuesto <b>${esc(d.parte)}</b> · encontrado como: <b>${esc(d.nombre || '—')}</b>${d.desde_cache?' (guardado)':''}</div>`;
+    const d = await api('/api/parte?pn=' + encodeURIComponent(pn) + (web ? '&web=1' : ''));
+    const cab = `<div class="nombre">Repuesto <b>${esc(d.parte)}</b> · <b>${esc(d.nombre || '—')}</b>
+      <span class="tipo" style="margin-left:6px">${esc(d.origen||'')}${d.desde_cache?' · guardado':''}</span>
+      ${d.puede_web ? `<button class="copiar" style="margin-left:8px" onclick="buscarParte(null,true)">Buscar también en internet</button>` : ''}</div>`;
     pintar(d.resultados, cab);
     if (d.fuentes && d.fuentes.length) $('salida').insertAdjacentHTML('beforeend',
       `<details class="fuentes"><summary>Ver fuentes de internet</summary><ul>${d.fuentes.map(f=>`<li>${esc(f)}</li>`).join('')}</ul></details>`);
