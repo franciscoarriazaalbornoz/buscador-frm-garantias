@@ -13,7 +13,7 @@
   "sucursal": "Matta",
   "rol": "usuario",
   "activo": true,
-  "hash": "scrypt:32768:8:1$KMcWtfKTWSDyOvrF$3fc168d9271f0c0ed204e7ca2b4f34c65f4e81839acb2bf55eaa69d1cf86268dc0929111c83d56da5c23ef15ea32693c70f771f7b590e2d82096f3a99970a4e7"
+  "hash": "scrypt:32768:8:1$LlhiVcGKkZ5X83OZ$1bbfc87ba13d3a08966968b453735884c21633d42b79468e11956b3f317a6095cc46887d0ffaf17d88d1c7ab3881cfcc7aa7ef30aa0e2c61af07b64deaa45a1e"
  },
  "fpetersen": {
   "creado": "2026-11-20",
