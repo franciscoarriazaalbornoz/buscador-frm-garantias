@@ -22,7 +22,9 @@
   input:focus{border-color:var(--rojo)}
   #q{text-transform:none}
   .btn{background:var(--rojo);color:#fff;border:0;border-radius:10px;padding:0 20px;font-size:16px;font-weight:600;cursor:pointer}
-  .btn:hover{background:var(--rojo2)} .btn:disabled{opacity:.6;cursor:wait}
+  .btn:hover{background:var(--rojo2)}
+  .btn.limpiar{background:#fff;color:var(--txt);border:1.5px solid var(--borde)}
+  .btn.limpiar:hover{background:#f0f1f3} .btn:disabled{opacity:.6;cursor:wait}
   .ayuda{color:var(--sub);font-size:13px;margin-top:8px}
   .nombre{margin:18px 0 8px;font-size:14px;color:var(--sub)}
   .nombre b{color:var(--txt)}
@@ -93,10 +95,12 @@
     <form id="fParte" class="fila" onsubmit="buscarParte(event)">
       <input id="pn" placeholder="Ej: 04465-0K290" autocomplete="off">
       <button class="btn" id="bParte">Buscar</button>
+      <button type="button" class="btn limpiar" onclick="limpiar()">Limpiar</button>
     </form>
     <form id="fTexto" class="fila" style="display:none" onsubmit="buscarTexto(event)">
-      <input id="q" placeholder="Ej: alternator, brake pad, window regulator" autocomplete="off">
+      <input id="q" placeholder="Ej: alternador, pastilla freno, window regulator" autocomplete="off">
       <button class="btn">Buscar</button>
+      <button type="button" class="btn limpiar" onclick="limpiar()">Limpiar</button>
     </form>
     <div class="ayuda" id="ayuda">Ingresa el número de parte del repuesto causante (con o sin guion, mayúscula o minúscula). Se busca en la lista de precios TCL o en internet y se cruza con el catálogo FRM.</div>
   </div>
@@ -181,6 +185,7 @@ function modo(m){
   $('ayuda').textContent = m==='parte'
     ? 'Ingresa el número de parte del repuesto causante (con o sin guion, mayúscula o minúscula). Se busca en la lista de precios TCL o en internet y se cruza con el catálogo FRM.'
     : 'Escribe el nombre del repuesto en español o inglés (ej: alternador, pastilla freno, window regulator).';
+  $('salida').innerHTML='';
   (m==='parte' ? $('pn') : $('q')).focus();
 }
 
@@ -230,6 +235,12 @@ async function buscarTexto(e){
     pintar(d.resultados, `<div class="nombre">Resultados para <b>${esc(q)}</b></div>`);
   } catch(err) { $('salida').innerHTML = `<div class="msg">${esc(err.message)}</div>`; }
 }
+
+function limpiar(){
+  $('pn').value=''; $('q').value=''; $('salida').innerHTML='';
+  ($('fParte').style.display==='none' ? $('q') : $('pn')).focus();
+}
+['pn','q'].forEach(id => $(id).addEventListener('input', e => { if (!e.target.value.trim()) $('salida').innerHTML=''; }));
 
 function copiar(btn, codigo){
   navigator.clipboard.writeText(codigo).then(()=>{ btn.textContent='✓ Copiado'; btn.classList.add('ok');
