@@ -8,10 +8,10 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE = Path(__file__).parent
 FRM = json.loads((BASE / "frm.json").read_text(encoding="utf-8"))
-SERPER_KEY = os.environ.get("SERPER_API_KEY", "")
+SERPER_KEY = os.environ.get("SERPER_API_KEY", "").strip()
 ADMIN_USER = os.environ.get("ADMIN_USER", "admin").strip().lower()
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
-GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")        # para guardar usuarios en el repo
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "").strip()
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "").strip()        # para guardar usuarios en el repo
 GITHUB_REPO = os.environ.get("GITHUB_REPO", "franciscoarriazaalbornoz/buscador-frm-garantias")
 
 app = Flask(__name__, static_folder=None)
@@ -91,6 +91,11 @@ def nombre_desde_internet(pn_raw):
     resp = requests.post("https://google.serper.dev/search",
                          headers={"X-API-KEY": SERPER_KEY, "Content-Type": "application/json"},
                          json={"q": f"Toyota {pretty} part", "num": 10}, timeout=15)
+    if resp.status_code in (401, 403):
+        raise RuntimeError("Serper rechazó la clave (SERPER_API_KEY). Revisa que el correo de Serper esté "
+                           "verificado y que la clave en Render esté bien copiada.")
+    if resp.status_code == 429:
+        raise RuntimeError("Se agotaron las búsquedas de Serper por ahora. Usa la pestaña 'Por descripción'.")
     resp.raise_for_status()
     data = resp.json()
     textos = [(o.get("title", ""), o.get("snippet", "")) for o in data.get("organic", [])]
